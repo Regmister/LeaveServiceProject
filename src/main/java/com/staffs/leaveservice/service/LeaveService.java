@@ -36,15 +36,15 @@ public class LeaveService extends LeaveServiceHelper {
     @Autowired
     private ConstantsProvider constantsProvider;
 
-    public ResponseEntity<ResponseDto<LeaveResponseDto>> handleLeaveRequest(CreateLeaveRequestDto request){
+    public ResponseEntity<ResponseDto<LeaveResponseDto>> handleLeaveRequest(CreateLeaveRequestDto request, String jwt){
         log.debug("Entering handleLeaveRequest: " + request);
 
-        if(!securityService.isJwtValid(request.getJwtToken(), request.getEmployeeId())){
+        if(!securityService.isJwtValid(jwt, request.getEmployeeId())){
             log.error(constantsProvider.getERROR_JWT_FAILURE());
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
         }
 
-        if (securityService.isDefault(securityService.extractId(request.getJwtToken()))){
+        if (securityService.isDefault(securityService.extractId(jwt))){
             throw new UnauthorizedException(constantsProvider.getERROR_DEFAULT_PASS());
         }
 
@@ -62,24 +62,24 @@ public class LeaveService extends LeaveServiceHelper {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
-    public ResponseEntity<ResponseDto<LeaveResponseDto>> handleChangeLeaveRequestStatus(ChangeLeaveRequestStatusDto request, String status){
+    public ResponseEntity<ResponseDto<LeaveResponseDto>> handleChangeLeaveRequestStatus(ChangeLeaveRequestStatusDto request, String status, String jwt){
         log.debug("Entering handleChangeLeaveRequestStatus: " + request);
 
-        if (!securityService.isJwtValid(request.getJwtToken())){
+        if (!securityService.isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
         }
 
-        if (securityService.isDefault(securityService.extractId(request.getJwtToken()))){
+        if (securityService.isDefault(securityService.extractId(jwt))){
             throw new UnauthorizedException(constantsProvider.getERROR_DEFAULT_PASS());
         }
 
-        Long userId = securityService.extractId(request.getJwtToken());
+        Long userId = securityService.extractId(jwt);
         boolean isUser = securityService.isUser(userId);
         boolean isAdmin = securityService.isAdmin(userId);
         boolean isCancellation = status.equals(constantsProvider.getLEAVE_REQUEST_CANCELLED());
 
         if (isCancellation) {
-            if (isUser && !securityService.isJwtValid(request.getJwtToken(), userId)) {
+            if (isUser && !securityService.isJwtValid(jwt, userId)) {
                 log.error(constantsProvider.getERROR_USER_FAILURE());
                 throw new UnauthorizedException(constantsProvider.getERROR_USER_FAILURE());
             } else if (!isUser && !isAdmin) {
@@ -100,7 +100,7 @@ public class LeaveService extends LeaveServiceHelper {
         leaveRepository.save(leaveEntity);
 
         if (status.equals(constantsProvider.getLEAVE_REQUEST_DECLINED()) || status.equals(constantsProvider.getLEAVE_REQUEST_CANCELLED())){
-            addLeaveBalance(request.getId(), validateDates(leaveEntity.getStartDate(), leaveEntity.getEndDate(), request.getId()));
+            addLeaveBalance(leaveEntity.getEmployeeId(), validateDates(leaveEntity.getStartDate(), leaveEntity.getEndDate(), request.getId()));
         }
 
         LeaveResponseDto leaveResponseDto = new LeaveResponseDto(leaveEntity);
@@ -109,19 +109,19 @@ public class LeaveService extends LeaveServiceHelper {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
-    public ResponseEntity<ResponseDto<List<LeaveResponseDto>>> handleGetEmployeesLeaves(LeaveHistoryRequestDto request){
+    public ResponseEntity<ResponseDto<List<LeaveResponseDto>>> handleGetEmployeesLeaves(LeaveHistoryRequestDto request, String jwt){
         log.debug("Entering handleGetEmployeesLeaves: " + request);
 
-        if (!securityService.isJwtValid(request.getJwtToken())){
+        if (!securityService.isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
         }
 
-        if (securityService.isDefault(securityService.extractId(request.getJwtToken()))){
+        if (securityService.isDefault(securityService.extractId(jwt))){
             throw new UnauthorizedException(constantsProvider.getERROR_DEFAULT_PASS());
         }
 
-        if (securityService.isUser(securityService.extractId(request.getJwtToken()))){
-            if (!securityService.isJwtValid(request.getJwtToken(), request.getEmployeeId())){
+        if (securityService.isUser(securityService.extractId(jwt))){
+            if (!securityService.isJwtValid(jwt, request.getEmployeeId())){
                 throw new UnauthorizedException(constantsProvider.getERROR_USER_FAILURE());
             }
         }
@@ -138,19 +138,19 @@ public class LeaveService extends LeaveServiceHelper {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
-    public ResponseEntity<ResponseDto<LeaveDaysResponseDto>> handleGetEmployeeDaysUsed(LeaveHistoryRequestDto request){
+    public ResponseEntity<ResponseDto<LeaveDaysResponseDto>> handleGetEmployeeDaysUsed(LeaveHistoryRequestDto request, String jwt){
         log.debug("Entering handleGetEmployeeDaysUsed: " + request);
 
-        if (!securityService.isJwtValid(request.getJwtToken())){
+        if (!securityService.isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
         }
 
-        if (securityService.isDefault(securityService.extractId(request.getJwtToken()))){
+        if (securityService.isDefault(securityService.extractId(jwt))){
             throw new UnauthorizedException(constantsProvider.getERROR_DEFAULT_PASS());
         }
 
-        if (securityService.isUser(securityService.extractId(request.getJwtToken()))){
-            if (!securityService.isJwtValid(request.getJwtToken(), request.getEmployeeId())){
+        if (securityService.isUser(securityService.extractId(jwt))){
+            if (!securityService.isJwtValid(jwt, request.getEmployeeId())){
                 throw new UnauthorizedException(constantsProvider.getERROR_USER_FAILURE());
             }
         }

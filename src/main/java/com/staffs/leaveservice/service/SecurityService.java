@@ -49,13 +49,13 @@ public class SecurityService extends SecurityServiceHelper {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
-    public ResponseEntity<ResponseDto<ChangePasswordResponseDto>> handleChangePassword(ChangePasswordRequestDto request) {
+    public ResponseEntity<ResponseDto<ChangePasswordResponseDto>> handleChangePassword(ChangePasswordRequestDto request, String jwt) {
 
-        if (!isJwtValid(request.getJwtToken())){
+        if (!isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
         }
 
-        EmployeeEntity employeeEntity = employeeRepository.findByEmployeeId(extractId(request.getJwtToken()))
+        EmployeeEntity employeeEntity = employeeRepository.findByEmployeeId(extractId(jwt))
                 .orElseThrow(() -> new ResourceNotFoundException(constantsProvider.getERROR_USER_FAILURE()));
 
         employeeEntity.setHash(employeeEntity.generateHash(request.getHash(), Hmac));
@@ -68,17 +68,17 @@ public class SecurityService extends SecurityServiceHelper {
 
     }
 
-    public ResponseEntity<ResponseDto<LoginResponseDto>> handleCreateUser(CreateUserRequestDto request) {
+    public ResponseEntity<ResponseDto<LoginResponseDto>> handleCreateUser(CreateUserRequestDto request, String jwt) {
 
-        if (!isJwtValid(request.getJwtToken())){
+        if (!isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
         }
 
-        if (isDefault(extractId(request.getJwtToken()))){
+        if (isDefault(extractId(jwt))){
             throw new UnauthorizedException(constantsProvider.getERROR_DEFAULT_PASS());
         }
 
-        if (!isAdmin(extractId(request.getJwtToken()))){
+        if (!isAdmin(extractId(jwt))){
             throw new UnauthorizedException(constantsProvider.getERROR_ROLE_FAILURE());
         }
 

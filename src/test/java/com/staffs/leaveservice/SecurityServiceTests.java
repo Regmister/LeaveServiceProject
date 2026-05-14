@@ -140,14 +140,13 @@ class SecurityServiceTests {
         String token = generateToken(1001L);
 
         ChangePasswordRequestDto request = new ChangePasswordRequestDto();
-        request.setJwtToken(token);
         request.setHash("newpassword");
 
         when(employeeRepository.findByEmployeeId(1001L)).thenReturn(Optional.of(adminEmployee));
         when(employeeRepository.save(any())).thenReturn(adminEmployee);
         when(constantsProvider.getSUCCESS_CHANGED_PASSWORD()).thenReturn("Password changed");
 
-        ResponseEntity<?> response = securityService.handleChangePassword(request);
+        ResponseEntity<?> response = securityService.handleChangePassword(request, token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(employeeRepository).save(adminEmployee);
@@ -156,12 +155,11 @@ class SecurityServiceTests {
     @Test
     void handleChangePassword_invalidToken_throwsAuthenticationException() {
         ChangePasswordRequestDto request = new ChangePasswordRequestDto();
-        request.setJwtToken("invalid.token.here");
         request.setHash("newpassword");
 
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
-        assertThrows(AuthenticationException.class, () -> securityService.handleChangePassword(request));
+        assertThrows(AuthenticationException.class, () -> securityService.handleChangePassword(request, "invalid.token.here"));
     }
 
     @Test
@@ -174,12 +172,11 @@ class SecurityServiceTests {
                 .compact();
 
         ChangePasswordRequestDto request = new ChangePasswordRequestDto();
-        request.setJwtToken(expiredToken);
         request.setHash("newpassword");
 
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
-        assertThrows(AuthenticationException.class, () -> securityService.handleChangePassword(request));
+        assertThrows(AuthenticationException.class, () -> securityService.handleChangePassword(request, expiredToken));
     }
 
     @Test
@@ -187,7 +184,6 @@ class SecurityServiceTests {
         String token = generateToken(1001L);
 
         CreateUserRequestDto request = new CreateUserRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(2001L);
         request.setFirstName("Jane");
         request.setLastName("Doe");
@@ -199,7 +195,7 @@ class SecurityServiceTests {
         when(employeeRepository.save(any())).thenReturn(new EmployeeEntity());
         when(constantsProvider.getSUCCESS_CREATED_USER()).thenReturn("User created");
 
-        ResponseEntity<?> response = securityService.handleCreateUser(request);
+        ResponseEntity<?> response = securityService.handleCreateUser(request, token);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
         verify(employeeRepository).save(any(EmployeeEntity.class));
@@ -208,7 +204,6 @@ class SecurityServiceTests {
     @Test
     void handleCreateUser_invalidToken_throwsAuthenticationException() {
         CreateUserRequestDto request = new CreateUserRequestDto();
-        request.setJwtToken("bad.token");
         request.setEmployeeId(2001L);
         request.setFirstName("Jane");
         request.setLastName("Doe");
@@ -218,7 +213,7 @@ class SecurityServiceTests {
 
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
-        assertThrows(AuthenticationException.class, () -> securityService.handleCreateUser(request));
+        assertThrows(AuthenticationException.class, () -> securityService.handleCreateUser(request, "bad.token"));
     }
 
     @Test
@@ -231,7 +226,6 @@ class SecurityServiceTests {
         defaultAdmin.setIsDefault(true);
 
         CreateUserRequestDto request = new CreateUserRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(2001L);
         request.setFirstName("Jane");
         request.setLastName("Doe");
@@ -242,7 +236,7 @@ class SecurityServiceTests {
         when(employeeRepository.findByEmployeeId(1002L)).thenReturn(Optional.of(defaultAdmin));
         when(constantsProvider.getERROR_DEFAULT_PASS()).thenReturn("Default password detected");
 
-        assertThrows(UnauthorizedException.class, () -> securityService.handleCreateUser(request));
+        assertThrows(UnauthorizedException.class, () -> securityService.handleCreateUser(request, token));
     }
 
     @Test
@@ -250,7 +244,6 @@ class SecurityServiceTests {
         String token = generateToken(1003L);
 
         CreateUserRequestDto request = new CreateUserRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(2001L);
         request.setFirstName("Jane");
         request.setLastName("Doe");
@@ -261,6 +254,6 @@ class SecurityServiceTests {
         when(employeeRepository.findByEmployeeId(1003L)).thenReturn(Optional.of(userEmployee));
         when(constantsProvider.getERROR_ROLE_FAILURE()).thenReturn("Insufficient role");
 
-        assertThrows(UnauthorizedException.class, () -> securityService.handleCreateUser(request));
+        assertThrows(UnauthorizedException.class, () -> securityService.handleCreateUser(request, token));
     }
 }

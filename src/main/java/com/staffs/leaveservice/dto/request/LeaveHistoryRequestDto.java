@@ -9,10 +9,6 @@ import javax.validation.constraints.NotNull;
 public class LeaveHistoryRequestDto {
 
     @NotNull
-    @JsonProperty("jwt_token")
-    private String jwtToken;
-
-    @NotNull
     @JsonProperty("employee_id")
     private Long employeeId;
 

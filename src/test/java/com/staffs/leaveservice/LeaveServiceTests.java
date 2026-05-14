@@ -101,7 +101,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 2));
         request.setEndDate(LocalDate.of(2025, 6, 6));
@@ -114,7 +113,7 @@ class LeaveServiceTests {
         when(constantsProvider.getLEAVE_REQUEST_PENDING()).thenReturn("PENDING");
         when(constantsProvider.getSUCCESS_LEAVE_REQUEST()).thenReturn("Leave request created");
 
-        ResponseEntity<ResponseDto<LeaveResponseDto>> response = leaveService.handleLeaveRequest(request);
+        ResponseEntity<ResponseDto<LeaveResponseDto>> response = leaveService.handleLeaveRequest(request, token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(leaveRepository, atLeastOnce()).save(any(LeaveEntity.class));
@@ -123,7 +122,6 @@ class LeaveServiceTests {
     @Test
     void handleLeaveRequest_invalidToken_throwsAuthenticationException() {
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken("bad.token");
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 2));
         request.setEndDate(LocalDate.of(2025, 6, 6));
@@ -131,7 +129,7 @@ class LeaveServiceTests {
         when(securityService.isJwtValid("bad.token", 1001L)).thenReturn(false);
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
-        assertThrows(AuthenticationException.class, () -> leaveService.handleLeaveRequest(request));
+        assertThrows(AuthenticationException.class, () -> leaveService.handleLeaveRequest(request, "bad.token"));
     }
 
     @Test
@@ -139,7 +137,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 2));
         request.setEndDate(LocalDate.of(2025, 6, 6));
@@ -149,7 +146,7 @@ class LeaveServiceTests {
         when(securityService.isDefault(1001L)).thenReturn(true);
         when(constantsProvider.getERROR_DEFAULT_PASS()).thenReturn("Default password detected");
 
-        assertThrows(UnauthorizedException.class, () -> leaveService.handleLeaveRequest(request));
+        assertThrows(UnauthorizedException.class, () -> leaveService.handleLeaveRequest(request, token));
     }
 
     @Test
@@ -157,7 +154,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 6));
         request.setEndDate(LocalDate.of(2025, 6, 2));
@@ -167,7 +163,7 @@ class LeaveServiceTests {
         when(securityService.isDefault(1001L)).thenReturn(false);
         when(constantsProvider.getERROR_LEAVE_INVALID_DATES()).thenReturn("Invalid dates");
 
-        assertThrows(InvalidLeaveException.class, () -> leaveService.handleLeaveRequest(request));
+        assertThrows(InvalidLeaveException.class, () -> leaveService.handleLeaveRequest(request, token));
     }
 
     @Test
@@ -179,7 +175,6 @@ class LeaveServiceTests {
         lowBalanceEmployee.setLeaveBalance(BigDecimal.valueOf(1));
 
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 2));
         request.setEndDate(LocalDate.of(2025, 6, 6));
@@ -190,7 +185,7 @@ class LeaveServiceTests {
         when(employeeRepository.findByEmployeeId(1001L)).thenReturn(Optional.of(lowBalanceEmployee));
         when(constantsProvider.getERROR_LEAVE_INVALID_LEAVE_BALANCE()).thenReturn("Insufficient leave balance");
 
-        assertThrows(InvalidLeaveException.class, () -> leaveService.handleLeaveRequest(request));
+        assertThrows(InvalidLeaveException.class, () -> leaveService.handleLeaveRequest(request, token));
     }
 
     @Test
@@ -198,7 +193,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken(token);
         request.setId(1L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -212,7 +206,7 @@ class LeaveServiceTests {
         when(constantsProvider.getSUCCESS_APPROVAL_LEAVE_REQUEST()).thenReturn("Status updated");
 
         ResponseEntity<ResponseDto<LeaveResponseDto>> response =
-                leaveService.handleChangeLeaveRequestStatus(request, "APPROVED");
+                leaveService.handleChangeLeaveRequestStatus(request, "APPROVED", token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         verify(leaveRepository).save(any(LeaveEntity.class));
@@ -223,8 +217,11 @@ class LeaveServiceTests {
         String token = generateToken(1003L);
 
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken(token);
         request.setId(1L);
+
+        EmployeeEntity employeeForBalance = new EmployeeEntity();
+        employeeForBalance.setEmployeeId(1L);
+        employeeForBalance.setLeaveBalance(BigDecimal.valueOf(20));
 
         when(securityService.isJwtValid(token)).thenReturn(true);
         when(securityService.extractId(token)).thenReturn(1003L);
@@ -234,11 +231,12 @@ class LeaveServiceTests {
         when(securityService.isJwtValid(token, 1003L)).thenReturn(true);
         when(leaveRepository.findById(1L)).thenReturn(Optional.of(leaveEntity));
         when(leaveRepository.save(any())).thenReturn(leaveEntity);
+        when(employeeRepository.findByEmployeeId(1L)).thenReturn(Optional.of(employeeForBalance));
         when(constantsProvider.getLEAVE_REQUEST_CANCELLED()).thenReturn("CANCELLED");
         when(constantsProvider.getSUCCESS_APPROVAL_LEAVE_REQUEST()).thenReturn("Status updated");
 
         ResponseEntity<ResponseDto<LeaveResponseDto>> response =
-                leaveService.handleChangeLeaveRequestStatus(request, "CANCELLED");
+                leaveService.handleChangeLeaveRequestStatus(request, "CANCELLED", token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -248,7 +246,6 @@ class LeaveServiceTests {
         String token = generateToken(1003L);
 
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken(token);
         request.setId(1L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -259,20 +256,19 @@ class LeaveServiceTests {
         when(constantsProvider.getERROR_USER_FAILURE()).thenReturn("Insufficient role");
 
         assertThrows(UnauthorizedException.class,
-                () -> leaveService.handleChangeLeaveRequestStatus(request, "APPROVED"));
+                () -> leaveService.handleChangeLeaveRequestStatus(request, "APPROVED", token));
     }
 
     @Test
     void handleChangeLeaveRequestStatus_invalidToken_throwsAuthenticationException() {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("bad.token");
         request.setId(1L);
 
         when(securityService.isJwtValid("bad.token")).thenReturn(false);
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
         assertThrows(AuthenticationException.class,
-                () -> leaveService.handleChangeLeaveRequestStatus(request, "APPROVED"));
+                () -> leaveService.handleChangeLeaveRequestStatus(request, "APPROVED", "bad.token"));
     }
 
     @Test
@@ -280,7 +276,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken(token);
         request.setId(999L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -293,7 +288,7 @@ class LeaveServiceTests {
         when(constantsProvider.getERROR_LEAVE_REQUEST_NOT_FOUND()).thenReturn("Leave not found");
 
         assertThrows(ResourceNotFoundException.class,
-                () -> leaveService.handleChangeLeaveRequestStatus(request, "APPROVED"));
+                () -> leaveService.handleChangeLeaveRequestStatus(request, "APPROVED", token));
     }
 
     @Test
@@ -301,7 +296,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1003L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -312,7 +306,7 @@ class LeaveServiceTests {
         when(constantsProvider.getSUCCESS_GET_ALL_EMPLOYEE_LEAVE()).thenReturn("Success");
 
         ResponseEntity<ResponseDto<List<LeaveResponseDto>>> response =
-                leaveService.handleGetEmployeesLeaves(request);
+                leaveService.handleGetEmployeesLeaves(request, token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -324,7 +318,6 @@ class LeaveServiceTests {
         String token = generateToken(1003L);
 
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1003L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -336,7 +329,7 @@ class LeaveServiceTests {
         when(constantsProvider.getSUCCESS_GET_ALL_EMPLOYEE_LEAVE()).thenReturn("Success");
 
         ResponseEntity<ResponseDto<List<LeaveResponseDto>>> response =
-                leaveService.handleGetEmployeesLeaves(request);
+                leaveService.handleGetEmployeesLeaves(request, token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
     }
@@ -346,7 +339,6 @@ class LeaveServiceTests {
         String token = generateToken(1003L);
 
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -356,19 +348,18 @@ class LeaveServiceTests {
         when(securityService.isJwtValid(token, 1001L)).thenReturn(false);
         when(constantsProvider.getERROR_USER_FAILURE()).thenReturn("Unauthorized");
 
-        assertThrows(UnauthorizedException.class, () -> leaveService.handleGetEmployeesLeaves(request));
+        assertThrows(UnauthorizedException.class, () -> leaveService.handleGetEmployeesLeaves(request, token));
     }
 
     @Test
     void handleGetEmployeesLeaves_invalidToken_throwsAuthenticationException() {
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken("bad.token");
         request.setEmployeeId(1001L);
 
         when(securityService.isJwtValid("bad.token")).thenReturn(false);
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
-        assertThrows(AuthenticationException.class, () -> leaveService.handleGetEmployeesLeaves(request));
+        assertThrows(AuthenticationException.class, () -> leaveService.handleGetEmployeesLeaves(request, "bad.token"));
     }
 
     @Test
@@ -376,7 +367,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -387,7 +377,7 @@ class LeaveServiceTests {
         when(constantsProvider.getSUCCESS_GET_TOTAL_LEAVE_DAYS()).thenReturn("Success");
 
         ResponseEntity<ResponseDto<LeaveDaysResponseDto>> response =
-                leaveService.handleGetEmployeeDaysUsed(request);
+                leaveService.handleGetEmployeeDaysUsed(request, token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertNotNull(response.getBody());
@@ -399,7 +389,6 @@ class LeaveServiceTests {
         String token = generateToken(1001L);
 
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -410,7 +399,7 @@ class LeaveServiceTests {
         when(constantsProvider.getSUCCESS_GET_TOTAL_LEAVE_DAYS()).thenReturn("Success");
 
         ResponseEntity<ResponseDto<LeaveDaysResponseDto>> response =
-                leaveService.handleGetEmployeeDaysUsed(request);
+                leaveService.handleGetEmployeeDaysUsed(request, token);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals(0L, response.getBody().getData().getDays());
@@ -421,7 +410,6 @@ class LeaveServiceTests {
         String token = generateToken(1003L);
 
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken(token);
         request.setEmployeeId(1001L);
 
         when(securityService.isJwtValid(token)).thenReturn(true);
@@ -431,18 +419,17 @@ class LeaveServiceTests {
         when(securityService.isJwtValid(token, 1001L)).thenReturn(false);
         when(constantsProvider.getERROR_USER_FAILURE()).thenReturn("Unauthorized");
 
-        assertThrows(UnauthorizedException.class, () -> leaveService.handleGetEmployeeDaysUsed(request));
+        assertThrows(UnauthorizedException.class, () -> leaveService.handleGetEmployeeDaysUsed(request, token));
     }
 
     @Test
     void handleGetEmployeeDaysUsed_invalidToken_throwsAuthenticationException() {
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken("bad.token");
         request.setEmployeeId(1001L);
 
         when(securityService.isJwtValid("bad.token")).thenReturn(false);
         when(constantsProvider.getERROR_JWT_FAILURE()).thenReturn("JWT invalid");
 
-        assertThrows(AuthenticationException.class, () -> leaveService.handleGetEmployeeDaysUsed(request));
+        assertThrows(AuthenticationException.class, () -> leaveService.handleGetEmployeeDaysUsed(request, "bad.token"));
     }
 }

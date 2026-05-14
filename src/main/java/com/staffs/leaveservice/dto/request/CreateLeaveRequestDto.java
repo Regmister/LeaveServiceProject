@@ -10,10 +10,6 @@ import java.time.LocalDate;
 public class CreateLeaveRequestDto {
 
     @NotNull
-    @JsonProperty("jwt_token")
-    private String jwtToken;
-
-    @NotNull
     @JsonProperty("employee_id")
     private Long employeeId;
 

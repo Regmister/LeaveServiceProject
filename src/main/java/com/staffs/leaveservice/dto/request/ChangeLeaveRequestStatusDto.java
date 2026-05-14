@@ -9,10 +9,6 @@ import javax.validation.constraints.NotNull;
 public class ChangeLeaveRequestStatusDto {
 
     @NotNull
-    @JsonProperty("jwt_token")
-    private String jwtToken;
-
-    @NotNull
     @JsonProperty("id")
     private Long id;
 

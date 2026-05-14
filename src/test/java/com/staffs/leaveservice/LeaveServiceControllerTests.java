@@ -26,6 +26,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -99,7 +100,6 @@ class LeaveServiceControllerTests {
     @Test
     void createUser_success() throws Exception {
         CreateUserRequestDto request = new CreateUserRequestDto();
-        request.setJwtToken("validToken");
         request.setEmployeeId(2001L);
         request.setFirstName("Jane");
         request.setLastName("Doe");
@@ -109,9 +109,10 @@ class LeaveServiceControllerTests {
 
         ResponseDto<LoginResponseDto> response = new ResponseDto<>("User created", null);
 
-        when(securityService.handleCreateUser(any())).thenReturn(new ResponseEntity<>(response, HttpStatus.CREATED));
+        when(securityService.handleCreateUser(any(CreateUserRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.CREATED));
 
         mockMvc.perform(post("/leave-service/create-user")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated());
@@ -120,7 +121,6 @@ class LeaveServiceControllerTests {
     @Test
     void createUser_notAdmin_returns401() throws Exception {
         CreateUserRequestDto request = new CreateUserRequestDto();
-        request.setJwtToken("userToken");
         request.setEmployeeId(2001L);
         request.setFirstName("Jane");
         request.setLastName("Doe");
@@ -128,9 +128,10 @@ class LeaveServiceControllerTests {
         request.setLeaveRefreshDate(LocalDate.of(2025, 1, 1));
         request.setLeaveRefreshAmount(BigDecimal.valueOf(20));
 
-        when(securityService.handleCreateUser(any())).thenThrow(new UnauthorizedException("Insufficient role"));
+        when(securityService.handleCreateUser(any(CreateUserRequestDto.class), anyString())).thenThrow(new UnauthorizedException("Insufficient role"));
 
         mockMvc.perform(post("/leave-service/create-user")
+                        .header("Authorisation", "Bearer userToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -139,14 +140,14 @@ class LeaveServiceControllerTests {
     @Test
     void changePassword_success() throws Exception {
         ChangePasswordRequestDto request = new ChangePasswordRequestDto();
-        request.setJwtToken("validToken");
         request.setHash("newHash");
 
         ResponseDto<ChangePasswordResponseDto> response = new ResponseDto<>("Password changed", null);
 
-        when(securityService.handleChangePassword(any())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(securityService.handleChangePassword(any(ChangePasswordRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(patch("/leave-service/change-password")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -155,12 +156,12 @@ class LeaveServiceControllerTests {
     @Test
     void changePassword_invalidToken_returns401() throws Exception {
         ChangePasswordRequestDto request = new ChangePasswordRequestDto();
-        request.setJwtToken("invalidToken");
         request.setHash("newHash");
 
-        when(securityService.handleChangePassword(any())).thenThrow(new AuthenticationException("Invalid token"));
+        when(securityService.handleChangePassword(any(ChangePasswordRequestDto.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
 
         mockMvc.perform(patch("/leave-service/change-password")
+                        .header("Authorisation", "Bearer invalidToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -169,16 +170,16 @@ class LeaveServiceControllerTests {
     @Test
     void createLeaveRequest_success() throws Exception {
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken("validToken");
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 2));
         request.setEndDate(LocalDate.of(2025, 6, 6));
 
         ResponseDto<LeaveResponseDto> response = new ResponseDto<>("Leave request created", null);
 
-        when(leaveService.handleLeaveRequest(any())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(leaveService.handleLeaveRequest(any(CreateLeaveRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(post("/leave-service/leave-request")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -187,14 +188,14 @@ class LeaveServiceControllerTests {
     @Test
     void createLeaveRequest_invalidToken_returns401() throws Exception {
         CreateLeaveRequestDto request = new CreateLeaveRequestDto();
-        request.setJwtToken("badToken");
         request.setEmployeeId(1001L);
         request.setStartDate(LocalDate.of(2025, 6, 2));
         request.setEndDate(LocalDate.of(2025, 6, 6));
 
-        when(leaveService.handleLeaveRequest(any())).thenThrow(new AuthenticationException("Invalid token"));
+        when(leaveService.handleLeaveRequest(any(CreateLeaveRequestDto.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
 
         mockMvc.perform(post("/leave-service/leave-request")
+                        .header("Authorisation", "Bearer badToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -203,15 +204,15 @@ class LeaveServiceControllerTests {
     @Test
     void cancelLeaveRequest_success() throws Exception {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("validToken");
         request.setId(1L);
 
         ResponseDto<LeaveResponseDto> response = new ResponseDto<>("Leave cancelled", null);
 
-        when(leaveService.handleChangeLeaveRequestStatus(any(), eq("CANCELLED")))
+        when(leaveService.handleChangeLeaveRequestStatus(any(ChangeLeaveRequestStatusDto.class), eq("CANCELLED"), anyString()))
                 .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(delete("/leave-service/leave-request")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -220,13 +221,13 @@ class LeaveServiceControllerTests {
     @Test
     void cancelLeaveRequest_notFound_returns400() throws Exception {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("validToken");
         request.setId(999L);
 
-        when(leaveService.handleChangeLeaveRequestStatus(any(), eq("CANCELLED")))
+        when(leaveService.handleChangeLeaveRequestStatus(any(ChangeLeaveRequestStatusDto.class), eq("CANCELLED"), anyString()))
                 .thenThrow(new ResourceNotFoundException("Leave request not found"));
 
         mockMvc.perform(delete("/leave-service/leave-request")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
@@ -235,15 +236,15 @@ class LeaveServiceControllerTests {
     @Test
     void approveLeaveRequest_success() throws Exception {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("managerToken");
         request.setId(1L);
 
         ResponseDto<LeaveResponseDto> response = new ResponseDto<>("Leave approved", null);
 
-        when(leaveService.handleChangeLeaveRequestStatus(any(), eq("APPROVED")))
+        when(leaveService.handleChangeLeaveRequestStatus(any(ChangeLeaveRequestStatusDto.class), eq("APPROVED"), anyString()))
                 .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(patch("/leave-service/leave-request/approve")
+                        .header("Authorisation", "Bearer managerToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -252,13 +253,13 @@ class LeaveServiceControllerTests {
     @Test
     void approveLeaveRequest_userRole_returns401() throws Exception {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("userToken");
         request.setId(1L);
 
-        when(leaveService.handleChangeLeaveRequestStatus(any(), eq("APPROVED")))
+        when(leaveService.handleChangeLeaveRequestStatus(any(ChangeLeaveRequestStatusDto.class), eq("APPROVED"), anyString()))
                 .thenThrow(new UnauthorizedException("Insufficient role"));
 
         mockMvc.perform(patch("/leave-service/leave-request/approve")
+                        .header("Authorisation", "Bearer userToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -267,15 +268,15 @@ class LeaveServiceControllerTests {
     @Test
     void declineLeaveRequest_success() throws Exception {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("managerToken");
         request.setId(1L);
 
         ResponseDto<LeaveResponseDto> response = new ResponseDto<>("Leave declined", null);
 
-        when(leaveService.handleChangeLeaveRequestStatus(any(), eq("DECLINED")))
+        when(leaveService.handleChangeLeaveRequestStatus(any(ChangeLeaveRequestStatusDto.class), eq("DECLINED"), anyString()))
                 .thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(patch("/leave-service/leave-request/decline")
+                        .header("Authorisation", "Bearer managerToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -284,13 +285,13 @@ class LeaveServiceControllerTests {
     @Test
     void declineLeaveRequest_userRole_returns401() throws Exception {
         ChangeLeaveRequestStatusDto request = new ChangeLeaveRequestStatusDto();
-        request.setJwtToken("userToken");
         request.setId(1L);
 
-        when(leaveService.handleChangeLeaveRequestStatus(any(), eq("DECLINED")))
+        when(leaveService.handleChangeLeaveRequestStatus(any(ChangeLeaveRequestStatusDto.class), eq("DECLINED"), anyString()))
                 .thenThrow(new UnauthorizedException("Insufficient role"));
 
         mockMvc.perform(patch("/leave-service/leave-request/decline")
+                        .header("Authorisation", "Bearer userToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -299,14 +300,14 @@ class LeaveServiceControllerTests {
     @Test
     void getLeaveStatus_success() throws Exception {
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken("validToken");
         request.setEmployeeId(1001L);
 
         ResponseDto<List<LeaveResponseDto>> response = new ResponseDto<>("Success", List.of());
 
-        when(leaveService.handleGetEmployeesLeaves(any())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(leaveService.handleGetEmployeesLeaves(any(LeaveHistoryRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(get("/leave-service/leave-request/status")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -315,12 +316,12 @@ class LeaveServiceControllerTests {
     @Test
     void getLeaveStatus_invalidToken_returns401() throws Exception {
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken("badToken");
         request.setEmployeeId(1001L);
 
-        when(leaveService.handleGetEmployeesLeaves(any())).thenThrow(new AuthenticationException("Invalid token"));
+        when(leaveService.handleGetEmployeesLeaves(any(LeaveHistoryRequestDto.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
 
         mockMvc.perform(get("/leave-service/leave-request/status")
+                        .header("Authorisation", "Bearer badToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -329,15 +330,15 @@ class LeaveServiceControllerTests {
     @Test
     void getTotalDays_success() throws Exception {
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken("validToken");
         request.setEmployeeId(1001L);
 
         LeaveDaysResponseDto leaveDaysResponse = new LeaveDaysResponseDto(5L);
         ResponseDto<LeaveDaysResponseDto> response = new ResponseDto<>("Success", leaveDaysResponse);
 
-        when(leaveService.handleGetEmployeeDaysUsed(any())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(leaveService.handleGetEmployeeDaysUsed(any(LeaveHistoryRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
         mockMvc.perform(get("/leave-service/leave-request/total-days")
+                        .header("Authorisation", "Bearer validToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
@@ -346,12 +347,12 @@ class LeaveServiceControllerTests {
     @Test
     void getTotalDays_invalidToken_returns401() throws Exception {
         LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setJwtToken("badToken");
         request.setEmployeeId(1001L);
 
-        when(leaveService.handleGetEmployeeDaysUsed(any())).thenThrow(new AuthenticationException("Invalid token"));
+        when(leaveService.handleGetEmployeeDaysUsed(any(LeaveHistoryRequestDto.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
 
         mockMvc.perform(get("/leave-service/leave-request/total-days")
+                        .header("Authorisation", "Bearer badToken")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());

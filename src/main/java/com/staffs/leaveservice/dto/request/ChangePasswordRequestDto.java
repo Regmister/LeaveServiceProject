@@ -9,10 +9,6 @@ import javax.validation.constraints.NotNull;
 public class ChangePasswordRequestDto {
 
     @NotNull
-    @JsonProperty("jwt_token")
-    private String jwtToken;
-
-    @NotNull
     @JsonProperty("hash")
     private String hash;
 
