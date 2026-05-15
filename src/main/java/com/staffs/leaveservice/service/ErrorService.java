@@ -31,4 +31,9 @@ public class ErrorService {
         ResponseDto<?> responseDto = new ResponseDto<>(e.getMessage());
         return new ResponseEntity<>(responseDto, HttpStatus.INTERNAL_SERVER_ERROR);
     }
+
+    public ResponseEntity<ResponseDto<?>> handleTooManyRequests(Exception e) {
+        ResponseDto<?> responseDto = new ResponseDto<>(e.getMessage());
+        return new ResponseEntity<>(responseDto, HttpStatus.TOO_MANY_REQUESTS);
+    }
 }

@@ -4,6 +4,7 @@ import com.staffs.leaveservice.constants.ConstantsProvider;
 import com.staffs.leaveservice.dto.response.ResponseDto;
 import com.staffs.leaveservice.exception.AuthenticationException;
 import com.staffs.leaveservice.exception.InvalidLeaveException;
+import com.staffs.leaveservice.exception.RateLimitException;
 import com.staffs.leaveservice.exception.ResourceNotFoundException;
 import com.staffs.leaveservice.exception.UnauthorizedException;
 import com.staffs.leaveservice.service.ErrorService;
@@ -37,6 +38,12 @@ class GlobalExceptionHandler extends ErrorService {
         log.error(constantsProvider.getERROR_SERVICE_INVALID_METHOD());
         log.trace(constantsProvider.getERROR_SERVICE_INVALID_BODY(), e);
         return handleBadRequest(constantsProvider.getERROR_SERVICE_INVALID_METHOD());
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    ResponseEntity<ResponseDto<?>> handleRateLimitException(RateLimitException e){
+        log.trace(e.getMessage(), e);
+        return handleTooManyRequests(e);
     }
 
     // Service level exceptions

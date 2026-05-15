@@ -3,13 +3,16 @@ package com.staffs.leaveservice.controller;
 import com.staffs.leaveservice.constants.ConstantsProvider;
 import com.staffs.leaveservice.dto.request.*;
 import com.staffs.leaveservice.dto.response.*;
+import com.staffs.leaveservice.exception.RateLimitException;
 import com.staffs.leaveservice.service.LeaveService;
+import com.staffs.leaveservice.service.RateLimiterService;
 import com.staffs.leaveservice.service.SecurityService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.util.List;
 
@@ -26,8 +29,15 @@ public class LeaveServiceController {
     @Autowired
     private SecurityService securityService;
 
+    @Autowired
+    private RateLimiterService rateLimiterService;
+
     @PostMapping("/login")
-    public ResponseEntity<ResponseDto<LoginResponseDto>> handleLogin(@Valid @RequestBody LoginRequestDto request){
+    public ResponseEntity<ResponseDto<LoginResponseDto>> handleLogin(@Valid @RequestBody LoginRequestDto request, HttpServletRequest httpRequest){
+        String clientIp = httpRequest.getRemoteAddr();
+        if (!rateLimiterService.isAllowed(clientIp)) {
+            throw new RateLimitException(constantsProvider.getERROR_TOO_MANY_REQUESTS());
+        }
         return securityService.handleLogin(request);
     }
 
@@ -73,18 +83,18 @@ public class LeaveServiceController {
         return leaveService.handleChangeLeaveRequestStatus(request, constantsProvider.getLEAVE_REQUEST_DECLINED(), authHeader);
     }
 
-    @GetMapping("/leave-request/status")
+    @GetMapping("/leave-request/status/{id}")
     public ResponseEntity<ResponseDto<List<LeaveResponseDto>>> handleGetLeaveStatus(
             @RequestHeader("Authorisation") String authHeader,
-            @Valid @RequestBody LeaveHistoryRequestDto request) {
-        return leaveService.handleGetEmployeesLeaves(request, authHeader);
+            @PathVariable("id") Long employeeId) {
+        return leaveService.handleGetEmployeesLeaves(employeeId, authHeader);
     }
 
-    @GetMapping("/leave-request/total-days")
+    @GetMapping("/leave-request/total-days/{id}")
     public ResponseEntity<ResponseDto<LeaveDaysResponseDto>> handleGetEmployeeDaysUsed(
             @RequestHeader("Authorisation") String authHeader,
-            @Valid @RequestBody LeaveHistoryRequestDto request) {
-        return leaveService.handleGetEmployeeDaysUsed(request, authHeader);
+            @PathVariable("id") Long employeeId) {
+        return leaveService.handleGetEmployeeDaysUsed(employeeId, authHeader);
     }
 
 }

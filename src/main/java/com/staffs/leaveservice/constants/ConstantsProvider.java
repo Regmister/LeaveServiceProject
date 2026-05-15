@@ -33,6 +33,10 @@ public class ConstantsProvider {
     @Value("${error.default.pass}")
     private String ERROR_DEFAULT_PASS;
 
+    @Getter
+    @Value("${error.too.many.requests}")
+    private String ERROR_TOO_MANY_REQUESTS;
+
     // Leave Service
 
     @Getter

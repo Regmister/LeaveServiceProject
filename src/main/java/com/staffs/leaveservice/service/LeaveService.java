@@ -100,7 +100,7 @@ public class LeaveService extends LeaveServiceHelper {
         leaveRepository.save(leaveEntity);
 
         if (status.equals(constantsProvider.getLEAVE_REQUEST_DECLINED()) || status.equals(constantsProvider.getLEAVE_REQUEST_CANCELLED())){
-            addLeaveBalance(leaveEntity.getEmployeeId(), validateDates(leaveEntity.getStartDate(), leaveEntity.getEndDate(), request.getId()));
+            addLeaveBalance(leaveEntity.getEmployeeId(), validateDates(leaveEntity.getStartDate(), leaveEntity.getEndDate(), securityService.extractId(jwt)));
         }
 
         LeaveResponseDto leaveResponseDto = new LeaveResponseDto(leaveEntity);
@@ -109,8 +109,8 @@ public class LeaveService extends LeaveServiceHelper {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
-    public ResponseEntity<ResponseDto<List<LeaveResponseDto>>> handleGetEmployeesLeaves(LeaveHistoryRequestDto request, String jwt){
-        log.debug("Entering handleGetEmployeesLeaves: " + request);
+    public ResponseEntity<ResponseDto<List<LeaveResponseDto>>> handleGetEmployeesLeaves(Long employeeId, String jwt){
+        log.debug("Entering handleGetEmployeesLeaves: " + employeeId);
 
         if (!securityService.isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
@@ -121,12 +121,12 @@ public class LeaveService extends LeaveServiceHelper {
         }
 
         if (securityService.isUser(securityService.extractId(jwt))){
-            if (!securityService.isJwtValid(jwt, request.getEmployeeId())){
+            if (!securityService.isJwtValid(jwt, employeeId)){
                 throw new UnauthorizedException(constantsProvider.getERROR_USER_FAILURE());
             }
         }
 
-        List<LeaveEntity> leaveEntityList = leaveRepository.findByEmployeeId(request.getEmployeeId());
+        List<LeaveEntity> leaveEntityList = leaveRepository.findByEmployeeId(employeeId);
 
         List<LeaveResponseDto> leaveResponsesListDto = new ArrayList<>();
 
@@ -138,8 +138,8 @@ public class LeaveService extends LeaveServiceHelper {
         return new ResponseEntity<>(responseDto, HttpStatus.OK);
     }
 
-    public ResponseEntity<ResponseDto<LeaveDaysResponseDto>> handleGetEmployeeDaysUsed(LeaveHistoryRequestDto request, String jwt){
-        log.debug("Entering handleGetEmployeeDaysUsed: " + request);
+    public ResponseEntity<ResponseDto<LeaveDaysResponseDto>> handleGetEmployeeDaysUsed(Long employeeId, String jwt){
+        log.debug("Entering handleGetEmployeeDaysUsed: " + employeeId);
 
         if (!securityService.isJwtValid(jwt)){
             throw new AuthenticationException(constantsProvider.getERROR_JWT_FAILURE());
@@ -150,12 +150,12 @@ public class LeaveService extends LeaveServiceHelper {
         }
 
         if (securityService.isUser(securityService.extractId(jwt))){
-            if (!securityService.isJwtValid(jwt, request.getEmployeeId())){
+            if (!securityService.isJwtValid(jwt, employeeId)){
                 throw new UnauthorizedException(constantsProvider.getERROR_USER_FAILURE());
             }
         }
 
-        List<LeaveEntity> leaveEntityList = leaveRepository.findByEmployeeId(request.getEmployeeId());
+        List<LeaveEntity> leaveEntityList = leaveRepository.findByEmployeeId(employeeId);
 
         long totalWorkingDays = 0;
 

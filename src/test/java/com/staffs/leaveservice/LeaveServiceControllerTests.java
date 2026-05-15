@@ -9,6 +9,7 @@ import com.staffs.leaveservice.exception.AuthenticationException;
 import com.staffs.leaveservice.exception.ResourceNotFoundException;
 import com.staffs.leaveservice.exception.UnauthorizedException;
 import com.staffs.leaveservice.service.LeaveService;
+import com.staffs.leaveservice.service.RateLimiterService;
 import com.staffs.leaveservice.service.SecurityService;
 import com.staffs.leaveservice.constants.ConstantsProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -47,6 +48,9 @@ class LeaveServiceControllerTests {
     @MockBean
     private ConstantsProvider constantsProvider;
 
+    @MockBean
+    private RateLimiterService rateLimiterService;
+
     private ObjectMapper objectMapper;
 
     @BeforeEach
@@ -57,6 +61,7 @@ class LeaveServiceControllerTests {
         when(constantsProvider.getLEAVE_REQUEST_CANCELLED()).thenReturn("CANCELLED");
         when(constantsProvider.getLEAVE_REQUEST_APPROVED()).thenReturn("APPROVED");
         when(constantsProvider.getLEAVE_REQUEST_DECLINED()).thenReturn("DECLINED");
+        when(rateLimiterService.isAllowed(any())).thenReturn(true);
     }
 
     @Test
@@ -299,62 +304,42 @@ class LeaveServiceControllerTests {
 
     @Test
     void getLeaveStatus_success() throws Exception {
-        LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setEmployeeId(1001L);
-
         ResponseDto<List<LeaveResponseDto>> response = new ResponseDto<>("Success", List.of());
 
-        when(leaveService.handleGetEmployeesLeaves(any(LeaveHistoryRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(leaveService.handleGetEmployeesLeaves(any(Long.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
-        mockMvc.perform(get("/leave-service/leave-request/status")
-                        .header("Authorisation", "Bearer validToken")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(get("/leave-service/leave-request/status/1001")
+                        .header("Authorisation", "Bearer validToken"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void getLeaveStatus_invalidToken_returns401() throws Exception {
-        LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setEmployeeId(1001L);
+        when(leaveService.handleGetEmployeesLeaves(any(Long.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
 
-        when(leaveService.handleGetEmployeesLeaves(any(LeaveHistoryRequestDto.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
-
-        mockMvc.perform(get("/leave-service/leave-request/status")
-                        .header("Authorisation", "Bearer badToken")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(get("/leave-service/leave-request/status/1001")
+                        .header("Authorisation", "Bearer badToken"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     void getTotalDays_success() throws Exception {
-        LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setEmployeeId(1001L);
-
         LeaveDaysResponseDto leaveDaysResponse = new LeaveDaysResponseDto(5L);
         ResponseDto<LeaveDaysResponseDto> response = new ResponseDto<>("Success", leaveDaysResponse);
 
-        when(leaveService.handleGetEmployeeDaysUsed(any(LeaveHistoryRequestDto.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
+        when(leaveService.handleGetEmployeeDaysUsed(any(Long.class), anyString())).thenReturn(new ResponseEntity<>(response, HttpStatus.OK));
 
-        mockMvc.perform(get("/leave-service/leave-request/total-days")
-                        .header("Authorisation", "Bearer validToken")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(get("/leave-service/leave-request/total-days/1001")
+                        .header("Authorisation", "Bearer validToken"))
                 .andExpect(status().isOk());
     }
 
     @Test
     void getTotalDays_invalidToken_returns401() throws Exception {
-        LeaveHistoryRequestDto request = new LeaveHistoryRequestDto();
-        request.setEmployeeId(1001L);
+        when(leaveService.handleGetEmployeeDaysUsed(any(Long.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
 
-        when(leaveService.handleGetEmployeeDaysUsed(any(LeaveHistoryRequestDto.class), anyString())).thenThrow(new AuthenticationException("Invalid token"));
-
-        mockMvc.perform(get("/leave-service/leave-request/total-days")
-                        .header("Authorisation", "Bearer badToken")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+        mockMvc.perform(get("/leave-service/leave-request/total-days/1001")
+                        .header("Authorisation", "Bearer badToken"))
                 .andExpect(status().isUnauthorized());
     }
 }
