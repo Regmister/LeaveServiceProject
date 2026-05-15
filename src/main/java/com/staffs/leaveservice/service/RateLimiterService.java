@@ -15,17 +15,12 @@ public class RateLimiterService {
 
     private final ConcurrentMap<String, Deque<Long>> attempts = new ConcurrentHashMap<>();
 
-    /**
-     * Returns true if the request is allowed, false if rate limited.
-     * Tracks attempts per key (e.g. IP address) within a sliding window.
-     */
     public boolean isAllowed(String key) {
         long now = System.currentTimeMillis();
 
         Deque<Long> timestamps = attempts.computeIfAbsent(key, k -> new LinkedList<>());
 
         synchronized (timestamps) {
-            // Remove expired entries
             while (!timestamps.isEmpty() && now - timestamps.peekFirst() >= WINDOW_MS) {
                 timestamps.pollFirst();
             }
