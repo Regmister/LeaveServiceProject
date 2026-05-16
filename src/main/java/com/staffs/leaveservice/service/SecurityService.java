@@ -40,10 +40,6 @@ public class SecurityService extends SecurityServiceHelper {
             throw new AuthenticationException(constantsProvider.getERROR_LOGIN_FAILURE());
         }
 
-        if (isDefault(request.getEmployeeId())){
-            throw new UnauthorizedException(constantsProvider.getERROR_DEFAULT_PASS());
-        }
-
         LoginResponseDto loginResponseDto = new LoginResponseDto(request, this);
         ResponseDto<LoginResponseDto> responseDto = new ResponseDto<>(constantsProvider.getSUCCESS_LOGIN(), loginResponseDto);
         return new ResponseEntity<>(responseDto, HttpStatus.OK);

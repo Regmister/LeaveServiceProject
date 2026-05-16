@@ -37,3 +37,4 @@ public class ErrorService {
         return new ResponseEntity<>(responseDto, HttpStatus.TOO_MANY_REQUESTS);
     }
 }
+
