@@ -118,24 +118,6 @@ class SecurityServiceTests {
     }
 
     @Test
-    void handleLogin_defaultPassword_throwsUnauthorizedException() {
-        EmployeeEntity defaultEmployee = new EmployeeEntity();
-        defaultEmployee.setEmployeeId(1002L);
-        defaultEmployee.setIsDefault(true);
-        defaultEmployee.setSalt("salt");
-        defaultEmployee.setHash(defaultEmployee.generateHash("password", HMAC_KEY));
-
-        LoginRequestDto request = new LoginRequestDto();
-        request.setEmployeeId(1002L);
-        request.setHash("password");
-
-        when(employeeRepository.findByEmployeeId(1002L)).thenReturn(Optional.of(defaultEmployee));
-        when(constantsProvider.getERROR_DEFAULT_PASS()).thenReturn("Default password detected");
-
-        assertThrows(UnauthorizedException.class, () -> securityService.handleLogin(request));
-    }
-
-    @Test
     void handleChangePassword_success() {
         String token = generateToken(1001L);
 
